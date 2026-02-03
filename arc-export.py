@@ -12,6 +12,7 @@ Usage:
 
 import argparse
 import os
+import platform
 import sys
 
 from utils import ArcSidebarParser, Exporter
@@ -72,6 +73,14 @@ Examples:
 
     if not os.path.exists(arc_parser.sidebar_path):
         print(f"Error: Arc sidebar not found at {arc_parser.sidebar_path}")
+        system = platform.system()
+        if system == "Darwin":
+            print("\nExpected location on macOS:")
+            print("  ~/Library/Application Support/Arc/StorableSidebar.json")
+        elif system == "Windows":
+            print("\nExpected location on Windows:")
+            print("  %LOCALAPPDATA%\\Packages\\TheBrowserCompany.Arc_*\\LocalCache\\Local\\Arc\\StorableSidebar.json")
+        print("\nMake sure Arc browser is installed and has been used at least once.")
         sys.exit(1)
 
     print(f"Source: {arc_parser.sidebar_path}\n")

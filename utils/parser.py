@@ -1,13 +1,50 @@
 """
-Arc Sidebar Parser Utilities
-Provides parsing and export functionality for Arc browser sidebar data.
+Arc Sidebar Parser
+Parses Arc browser sidebar data from StorableSidebar.json.
 """
 
-import html
+import glob
 import json
 import os
+import platform
 from datetime import datetime, timezone
 from typing import Dict, List, Any, Optional
+
+
+def get_default_arc_path() -> str:
+    """Get the default Arc browser data path based on the current platform"""
+    system = platform.system()
+
+    if system == "Darwin":  # macOS
+        return os.path.expanduser("~/Library/Application Support/Arc")
+
+    elif system == "Windows":
+        # Arc on Windows is installed via Microsoft Store
+        # Path: %LOCALAPPDATA%\Packages\TheBrowserCompany.Arc_*\LocalCache\Local\Arc
+        local_app_data = os.environ.get("LOCALAPPDATA", "")
+        if not local_app_data:
+            local_app_data = os.path.expanduser("~\\AppData\\Local")
+
+        packages_path = os.path.join(local_app_data, "Packages")
+        # Find the Arc package folder (the suffix may vary)
+        arc_pattern = os.path.join(packages_path, "TheBrowserCompany.Arc_*")
+        arc_packages = glob.glob(arc_pattern)
+
+        if arc_packages:
+            # Use the first match (there should typically be only one)
+            return os.path.join(arc_packages[0], "LocalCache", "Local", "Arc")
+
+        # Fallback to the known common suffix
+        return os.path.join(
+            packages_path,
+            "TheBrowserCompany.Arc_ttt1ap7aakyb4",
+            "LocalCache",
+            "Local",
+            "Arc"
+        )
+
+    else:
+        raise OSError(f"Unsupported platform: {system}. Only macOS and Windows are supported.")
 
 
 class ArcSidebarParser:
@@ -15,7 +52,7 @@ class ArcSidebarParser:
 
     def __init__(self, arc_path: str = None):
         if arc_path is None:
-            arc_path = os.path.expanduser("~/Library/Application Support/Arc")
+            arc_path = get_default_arc_path()
 
         self.sidebar_path = os.path.join(arc_path, "StorableSidebar.json")
         self.data = None
@@ -221,78 +258,3 @@ class ArcSidebarParser:
             "tabs": tabs,
             "folders": folders
         }
-
-
-class Exporter:
-    """Export utilities for Arc sidebar data"""
-
-    @staticmethod
-    def to_json(data: Dict, output_path: str, pretty: bool = True) -> bool:
-        """Export data to JSON file"""
-        try:
-            with open(output_path, 'w', encoding='utf-8') as f:
-                if pretty:
-                    json.dump(data, f, indent=2, ensure_ascii=False)
-                else:
-                    json.dump(data, f, ensure_ascii=False)
-            return True
-        except IOError as e:
-            print(f"Error writing JSON: {e}")
-            return False
-
-    @staticmethod
-    def to_html(data: Dict, output_path: str) -> bool:
-        """Export data to Chrome-compatible bookmarks HTML"""
-
-        def format_item(item: Dict, indent: int = 1) -> List[str]:
-            result = []
-            prefix = '    ' * indent
-
-            if item.get('type') == 'folder':
-                title = html.escape(item.get('title', 'Untitled'))
-                result.append(f'{prefix}<DT><H3>{title}</H3>')
-                result.append(f'{prefix}<DL><p>')
-                for child in item.get('children', []):
-                    result.extend(format_item(child, indent + 1))
-                result.append(f'{prefix}</DL><p>')
-            else:
-                title = html.escape(item.get('title', 'Untitled'))
-                url = html.escape(item.get('url', ''))
-                if url:
-                    result.append(f'{prefix}<DT><A HREF="{url}">{title}</A>')
-
-            return result
-
-        lines = [
-            '<!DOCTYPE NETSCAPE-Bookmark-file-1>',
-            '<!-- Exported from Arc Browser -->',
-            '<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">',
-            '<TITLE>Bookmarks</TITLE>',
-            '<H1>Bookmarks</H1>',
-            '<DL><p>'
-        ]
-
-        for space in data.get('spaces', []):
-            space_title = html.escape(space.get('title', 'Untitled Space'))
-            pinned_items = space.get('pinned', [])
-
-            if not pinned_items:
-                continue
-
-            lines.append(f'    <DT><H3>{space_title}</H3>')
-            lines.append('    <DL><p>')
-
-            for item in pinned_items:
-                lines.extend(format_item(item, 2))
-
-            lines.append('    </DL><p>')
-
-        lines.append('</DL><p>')
-
-        try:
-            with open(output_path, 'w', encoding='utf-8') as f:
-                f.write('\n'.join(lines))
-            return True
-        except IOError as e:
-            print(f"Error writing HTML: {e}")
-            return False

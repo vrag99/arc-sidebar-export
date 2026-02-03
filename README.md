@@ -1,12 +1,13 @@
 # Arc Sidebar Export
 
-Export pinned tabs from Arc browser organized by space.
+Export pinned tabs from Arc browser organized by space. Works on **macOS** and **Windows**.
 
 ## Features
 
 - Exports **pinned tabs only** from Arc's sidebar
 - Organizes by **Spaces** with folder hierarchy preserved
 - Outputs to **JSON** and/or **Chrome-compatible HTML**
+- **Cross-platform**: supports macOS and Windows
 - No external dependencies
 
 ## Usage
@@ -44,7 +45,10 @@ Files are saved to the `outputs/` directory:
 ```
 arc-sidebar-export/
 ├── arc-export.py      # Main script
-├── arc_utils.py       # Parser & exporter utilities
+├── utils/
+│   ├── __init__.py    # Package exports
+│   ├── parser.py      # ArcSidebarParser class
+│   └── exporter.py    # Exporter class
 ├── outputs/
 │   ├── arc_pinned.json
 │   └── arc_pinned.html
@@ -93,20 +97,28 @@ Your Arc spaces will appear as bookmark folders.
 ## Requirements
 
 - Python 3.6+
-- Arc browser on macOS
+- Arc browser installed on macOS or Windows
 
 ## Files
 
 | File | Description |
 |------|-------------|
 | `arc-export.py` | Main CLI script |
-| `arc_utils.py` | Parser and exporter classes |
+| `utils/parser.py` | ArcSidebarParser class and platform detection |
+| `utils/exporter.py` | Exporter class (JSON and HTML output) |
 
 ## How It Works
 
-Reads `~/Library/Application Support/Arc/StorableSidebar.json` and extracts:
+Reads Arc's `StorableSidebar.json` and extracts:
 - Spaces (workspaces)
 - Pinned containers
 - Tabs and folders with parent-child relationships
 
 Builds a hierarchical tree and exports to the chosen format.
+
+### Data Location
+
+| Platform | Path |
+|----------|------|
+| macOS | `~/Library/Application Support/Arc/StorableSidebar.json` |
+| Windows | `%LOCALAPPDATA%\Packages\TheBrowserCompany.Arc_*\LocalCache\Local\Arc\StorableSidebar.json` |
